@@ -184,14 +184,24 @@ function renderMonthTable(month) {
     days.forEach(day => html += `<th>${day}</th>`);
     html += `</tr></thead><tbody>`;
 
+    // --- NEW LOGIC: Render single Total Unit row at top if totalUnit:1 and no custom units ---
+    const isSingleUnit = currentTotalUnit === 1 && (!currentRoomUnits || Object.keys(currentRoomUnits).length === 0);
+    if (isSingleUnit) {
+        html += `<tr class="unit-row"><td class="sticky-col">Total Unit</td>`;
+        days.forEach(() => html += `<th>1</th>`);
+        html += `</tr>`;
+    }
+
     hotelData.forEach(row => {
         const roomType = row["Room Type"];
         const roomUnits = currentRoomUnits[roomType] || currentTotalUnit;
 
-        // unit row for this room type (only one row, shows units number)
-        html += `<tr class="unit-row" data-room-type-unit="${roomType}"><td class="sticky-col">Total Unit</td>`;
-        days.forEach(() => html += `<th>${roomUnits}</th>`);
-        html += `</tr>`;
+        // Only render per-room Total Unit row if not single-unit mode
+        if (!isSingleUnit) {
+            html += `<tr class="unit-row" data-room-type-unit="${roomType}"><td class="sticky-col">Total Unit</td>`;
+            days.forEach(() => html += `<th>${roomUnits}</th>`);
+            html += `</tr>`;
+        }
 
         // generate one availability row per unit
         for (let u = 1; u <= roomUnits; u++) {

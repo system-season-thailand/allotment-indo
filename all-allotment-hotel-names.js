@@ -5,12 +5,7 @@ const allotmentHotels = [
     { name: "Komaneka Keramas", releaseDays: 14, totalUnit: 1 },
 
 
-    {
-        name: "Komaneka Tanggayuda", releaseDays: 14, units: {
-            "Valley Villa": 1,
-            "Premier Valley Villa": 1
-        }
-    },
+    { name: "Komaneka Tanggayuda", releaseDays: 14, totalUnit: 1 },
 
 
     {
