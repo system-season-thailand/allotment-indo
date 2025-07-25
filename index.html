@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Allotment INDONESIA</title>
+    <link rel="stylesheet" href="allotment.css">
+</head>
+
+<body>
+
+
+
+    <!-- Top Controls -->
+    <div class="top-controls">
+        <button id="toggleModeBtn" class="mode-toggle">Mood</button>
+        <select id="userSelector" class="user-selector"></select>
+    </div>
+
+    <!-- Modal -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <h3>Mood</h3>
+            <div>
+                <button id="viewModeBtn">View</button>
+                <button id="editorModeBtn">Editor</button>
+            </div>
+            <input type="password" id="editorPassword" placeholder="Enter password for Editor">
+        </div>
+    </div>
+
+
+
+
+
+    <h2>Allotment <span style="color: red;">INDONESIA</span></h2>
+    <div id="hotelSelectorContainer"></div>
+
+    <div id="monthTabs" class="tabs"></div>
+
+    <div class="content-area">
+        <h3 id="currentHotelNameTitle" class="hotel-name-title"></h3>
+        <h3 id="currentMonthTitle" class="month-title"></h3>
+        <div id="tableContainer" style="overflow-x: auto;"></div>
+    </div>
+
+
+
+
+
+    <!-- Supabase JS Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <!-- Supabase Import Databse Project -->
+    <script>
+        const supabaseUrl = 'https://zrunsrimyijarswjfycw.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpydW5zcmlteWlqYXJzd2pmeWN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3MjgzOTEsImV4cCI6MjA2MjMwNDM5MX0.UdW4LiIY-t1jZlrat1VUGnW0yRE7YEzW5SHbpkE29H8'; // truncated for safety
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    </script>
+
+
+
+
+    <script src="all-allotment-hotel-names.js"></script>
+    <script src="user-selector.js"></script>
+    <script src="allotment.js"></script>
+
+</body>
+
+</html>
