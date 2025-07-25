@@ -1,0 +1,348 @@
+/* Base mobile-first styles */
+body {
+    font-family: Arial, sans-serif;
+    user-select: none;
+    background-color: #f9f9f9;
+}
+
+
+
+body.view-mode td {
+    cursor: not-allowed !important;
+    opacity: 0.95;
+}
+
+
+
+
+h2 {
+    font-size: clamp(1.2rem, 4vw, 2rem);
+    text-align: center;
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+}
+
+select {
+    width: 100%;
+    padding: clamp(0.6rem, 2vw, 1rem);
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(0.25rem, 2vw, 0.5rem);
+    justify-content: center;
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+}
+
+.tab-button {
+    flex: 1 1 auto;
+    padding: clamp(0.5rem, 2vw, 0.8rem) clamp(1rem, 4vw, 2rem);
+    font-size: clamp(0.9rem, 3vw, 1.1rem);
+    background-color: #eee;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    background-color: #007BFF;
+    color: white;
+}
+
+#tableContainer {
+    overflow-x: auto;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: white;
+}
+
+table {
+    min-width: 700px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.hotel-name-title {
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    text-align: center;
+    color: rgb(38, 0, 255);
+}
+
+.month-title {
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    text-align: center;
+    color: red;
+}
+
+/* Content area separation */
+.content-area {
+    background-color: white;
+    border-radius: 10px;
+    padding: 5px;
+    margin-top: 40px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+/* Sticky first column cells */
+.sticky-col {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 5;
+    min-width: 140px;
+    font-weight: 600;
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Lower stacking context for non-sticky cells */
+table td:not(:first-child),
+table th:not(:first-child) {
+    position: relative;
+    z-index: 1;
+}
+
+/* Sticky header row */
+table thead tr:first-child th {
+    position: sticky;
+    top: 0;
+    background-color: #f1f1f1;
+    z-index: 4;
+}
+
+/* Make the header's first cell (Room Type) sticky horizontally */
+table thead tr:first-child th:first-child {
+    left: 0;
+    z-index: 6;
+    /* above sticky-col cells */
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Unit rows visual distinction */
+tr.unit-row td,
+tr.unit-row th {
+    background: #d244199d;
+    /* blue */
+    color: #fff;
+    font-weight: 600;
+}
+
+/* Smooth cell borders */
+table,
+th,
+td {
+    border-collapse: collapse;
+}
+
+th,
+td {
+    border: 1px solid #d0d0d0;
+}
+
+
+th,
+td {
+    padding: clamp(1rem, 2.5vw, 1.4rem) clamp(0.6rem, 2vw, 1rem);
+    font-size: clamp(0.7rem, 2.5vw, 1rem);
+    text-align: center;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    min-width: 1rem;
+}
+
+
+/* Room type cells (sticky-col in availability rows) highlighted in red */
+tbody tr:not(.unit-row)>td.sticky-col {
+    background-color: rgb(29, 121, 124);
+    color: #fff;
+}
+
+
+td.available {
+    background-color: white;
+    color: black;
+}
+
+td.closed {
+    background-color: rgb(70, 70, 70);
+    color: white;
+}
+
+td.released {
+    background-color: red;
+    color: white;
+}
+
+td.booked {
+    background-color: rgb(0, 141, 0);
+    color: white;
+}
+
+
+
+
+
+
+
+
+
+
+
+/* User Type Button Styling */
+.mode-toggle {
+    display: block;
+    margin-bottom: 90px;
+    padding: clamp(0.4rem, 1.5vw, 1rem);
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 20% auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 350px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.modal-content h3 {
+    margin-bottom: 1rem;
+    font-size: clamp(1.2rem, 3vw, 1.5rem);
+}
+
+.modal-content button {
+    margin: 10px;
+    padding: 10px 15px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+#editorPassword {
+    margin-top: 15px;
+    padding: 10px;
+    width: 80%;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+
+
+
+
+
+
+
+/* Larger screens only */
+@media (min-width: 768px) {
+    .tab-button {
+        font-size: clamp(1rem, 1.5vw, 1.2rem);
+    }
+
+    table {
+        min-width: 100%;
+    }
+}
+
+/* Custom Hotel Selector Dropdown */
+#hotelSelectorContainer {
+    position: relative;
+    max-width: 500px;
+    margin: 0 auto 1.5rem auto;
+    z-index: 10;
+}
+
+.hotel-search-input {
+    width: 100%;
+    padding: clamp(0.6rem, 2vw, 1rem);
+    font-size: clamp(1rem, 3.5vw, 1.2rem);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+.hotel-dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    z-index: 100;
+}
+
+.hotel-dropdown-item {
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.15s;
+}
+
+.hotel-dropdown-item:hover,
+.hotel-dropdown-item.active {
+    background: #007bff;
+    color: white;
+}
+
+.hotel-dropdown-empty {
+    padding: 0.7rem 1rem;
+    color: #888;
+    font-size: 1rem;
+}
+
+/* Top Controls for mode toggle + user selector */
+.top-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 90px;
+}
+
+/* Button Styling */
+.top-controls .mode-toggle {
+    padding: clamp(0.4rem, 1.5vw, 1rem);
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    cursor: pointer;
+    margin: 0;
+    /* ensure no accidental spacing */
+}
+
+/* Select Styling */
+.user-selector {
+    padding: clamp(0.4rem, 1.5vw, 1rem);
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: clamp(10rem, 40vw, 20rem);
+    margin: 0;
+    /* ensure alignment */
+}
