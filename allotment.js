@@ -91,6 +91,8 @@ let currentTotalUnit = 1;
 
 // Will hold release days value for currently selected hotel (set by selector script)
 let currentReleaseDays = 0;
+let currentSingleUnit = false; // Track if current hotel is single unit
+let currentCloseSellData = true; // Track if current hotel should show closed days
 
 // Fetch (or initialise) bookings JSON for the current hotel
 async function loadHotelBookings() {
@@ -129,6 +131,8 @@ async function loadHotelData(hotelName) {
 
     currentTotalUnit = hotelObj && hotelObj.totalUnit ? hotelObj.totalUnit : 1;
     currentRoomUnits = hotelObj && hotelObj.units ? hotelObj.units : {};
+    currentSingleUnit = hotelObj && hotelObj.singleUnit ? true : false;
+    currentCloseSellData = hotelObj && hotelObj.closeSellData !== undefined ? hotelObj.closeSellData : true;
 
     // Load bookings for this hotel
     await loadHotelBookings();
@@ -160,6 +164,12 @@ function renderTabs() {
             document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             renderMonthTable(month);
+
+            // Reset scroll position to start from day 1
+            const tableContainer = document.getElementById('tableContainer');
+            if (tableContainer) {
+                tableContainer.scrollLeft = 0;
+            }
         });
         monthTabs.appendChild(btn);
     });
@@ -212,7 +222,7 @@ function renderMonthTable(month) {
             }
 
             // Parse current month string like "7-8, 11-12, 30"
-            const closedDays = parseCloseDays(row[month]);
+            const closedDays = currentCloseSellData ? parseCloseDays(row[month]) : [];
 
             days.forEach(day => {
                 const isClosed = closedDays.includes(day);
