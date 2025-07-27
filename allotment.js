@@ -231,14 +231,20 @@ function renderMonthTable(month) {
                 let isReleased = false;
                 if (!isClosed && (currentReleaseDays || 0) > 0) {
                     const today = new Date();
+                    today.setHours(0, 0, 0, 0); // Reset time to start of day
 
                     // Build a Date object that represents this table cell
                     const monthIndex = months.indexOf(month);
-                    const cellDate = new Date(today.getFullYear(), monthIndex, day);
+                    let cellDate = new Date(today.getFullYear(), monthIndex, day);
 
-                    // If the cell month is ahead of the current month, assume it's from the previous year
-                    if (monthIndex > today.getMonth()) {
-                        cellDate.setFullYear(today.getFullYear() - 1);
+                    // Handle year transition - if we're in December and looking at January, it's next year
+                    if (today.getMonth() === 11 && monthIndex === 0) {
+                        cellDate.setFullYear(today.getFullYear() + 1);
+                    }
+                    // If the cell month is ahead of the current month, it's the same year (not previous year)
+                    else if (monthIndex > today.getMonth()) {
+                        // Keep the same year for future months in the same year
+                        cellDate.setFullYear(today.getFullYear());
                     }
 
                     // Calculate boundary dates
@@ -246,9 +252,21 @@ function renderMonthTable(month) {
                     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
                     const releaseBoundary = new Date(today);
-                    releaseBoundary.setDate(releaseBoundary.getDate() + currentReleaseDays);
+                    releaseBoundary.setDate(releaseBoundary.getDate() + (currentReleaseDays - 1));
 
+                    // Cell is released if it's within the release window (2 months ago to today + releaseDays)
                     isReleased = cellDate >= twoMonthsAgo && cellDate <= releaseBoundary;
+
+                    // Debug logging for August days 1-10
+                    if (month === 'August' && day >= 1 && day <= 10) {
+                        console.log(`August ${day}:`, {
+                            today: today.toDateString(),
+                            cellDate: cellDate.toDateString(),
+                            releaseBoundary: releaseBoundary.toDateString(),
+                            isReleased,
+                            currentReleaseDays
+                        });
+                    }
                 }
 
                 let classes = isClosed ? 'closed' : (isReleased ? 'released' : 'available');
