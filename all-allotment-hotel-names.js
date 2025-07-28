@@ -99,6 +99,8 @@ function renderHotelSelector() {
             `<div class="hotel-dropdown-item${i === activeIndex ? ' active' : ''}" data-index="${i}">${hotel.name}</div>`
         ).join('');
     }
+
+
     function selectHotel(hotel) {
         input.value = hotel.name;
         hideDropdown();
@@ -112,7 +114,15 @@ function renderHotelSelector() {
         if (hotelNameTitleElement) {
             hotelNameTitleElement.textContent = hotel.name;
         }
+
+        // Reset scroll position to start from day 1
+        const tableContainer = document.getElementById('tableContainer');
+        if (tableContainer) {
+            tableContainer.scrollLeft = 0;
+        }
     }
+
+
     input.addEventListener('input', () => {
         const val = input.value.trim().toLowerCase();
         filtered = allotmentHotels.filter(h => h.name.toLowerCase().includes(val));
