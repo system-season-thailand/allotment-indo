@@ -28,16 +28,16 @@ const allotmentHotels = [
 
 // --- Website Users with Codes ---
 window.allotmentUsers = [
-    { name: "Andita", code: "An" },
-    { name: "Rika", code: "Ri" },
-    { name: "Zahra", code: "Zh" },
+    { name: "Andita", code: "Dit" },
+    { name: "Rika", code: "Rik" },
+    { name: "Zahra", code: "Zhr" },
     { name: "Caca", code: "Cc" },
-    { name: "Sofia", code: "Sf" },
-    { name: "Salma", code: "Sm" },
-    { name: "Sarah", code: "Sr" },
-    { name: "Aulia", code: "Al" },
-    { name: "Ramli", code: "Rm" },
-    { name: "Bandar", code: "Bn" },
+    { name: "Sofia", code: "Sof" },
+    { name: "Salma", code: "Slm" },
+    { name: "Sarah", code: "Srh" },
+    { name: "Aulia", code: "Aul" },
+    { name: "Ramli", code: "Rml" },
+    { name: "Bandar", code: "Bnd" },
 ];
 
 
