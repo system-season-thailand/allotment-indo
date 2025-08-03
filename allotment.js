@@ -508,19 +508,3 @@ async function persistBooking(cell) {
         .from('allotment_indo')
         .upsert({ hotel_name: currentHotel, bookings: hotelBookings }, { onConflict: ['hotel_name'] });
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
