@@ -29,6 +29,7 @@ const allotmentHotels = [
 // --- Website Users with Codes ---
 window.allotmentUsers = [
     { name: "Andita", code: "an" },
+    { name: "Rika", code: "ri" },
     { name: "Zahra", code: "zh" },
     { name: "Caca", code: "cc" },
     { name: "Sofia", code: "sf" },
