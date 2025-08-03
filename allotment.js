@@ -6,6 +6,45 @@ let isDragging = false;
 let dragMode = ''; // 'book' or 'clear'
 let dragChanged = [];
 
+// Notification System
+function showNotification(message, type = 'default', duration = 3000) {
+    const container = document.getElementById('notificationContainer');
+    const box = container.querySelector('.notification-box');
+    const messageElement = document.getElementById('notificationMessage');
+
+    // Set message
+    messageElement.textContent = message;
+
+    // Set type (affects styling)
+    box.className = 'notification-box';
+    if (type !== 'default') {
+        box.classList.add(type);
+    }
+
+    // Show notification
+    container.classList.add('show');
+
+    // Auto hide after duration
+    setTimeout(() => {
+        hideNotification();
+    }, duration);
+}
+
+function hideNotification() {
+    const container = document.getElementById('notificationContainer');
+    container.classList.remove('show');
+}
+
+// Close notification on click
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('notificationContainer');
+    container.addEventListener('click', (e) => {
+        if (e.target === container) {
+            hideNotification();
+        }
+    });
+});
+
 // Role Modal logic
 const toggleModeBtn = document.getElementById("toggleModeBtn");
 const roleModal = document.getElementById("roleModal");
@@ -22,7 +61,7 @@ viewModeBtn.addEventListener("click", () => {
     localStorage.setItem("UserMode", "view");
     document.body.classList.add("view-mode");
     roleModal.style.display = "none";
-    alert("View mode enabled — editing is disabled.");
+    showNotification("View mode enabled — editing is disabled.", "success");
 });
 
 editorModeBtn.addEventListener("click", () => {
@@ -31,9 +70,9 @@ editorModeBtn.addEventListener("click", () => {
         localStorage.setItem("UserMode", "editor");
         document.body.classList.remove("view-mode");
         roleModal.style.display = "none";
-        alert("Editor mode enabled.");
+        showNotification("Editor mode enabled.", "success");
     } else {
-        alert("Password is Incorrect");
+        showNotification("Password is incorrect.", "error");
     }
 });
 
@@ -120,7 +159,10 @@ async function loadHotelBookings() {
 async function loadHotelData(hotelName) {
     if (!hotelName) return;
     const { data, error } = await supabase.from(hotelName).select('*').order('id');
-    if (error) return alert('Failed to load hotel data');
+    if (error) {
+        showNotification('Failed to load hotel data', 'error');
+        return;
+    }
     hotelData = data;
 
     // Determine total units and per-room units mapping
