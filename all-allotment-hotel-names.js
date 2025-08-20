@@ -2,7 +2,7 @@
 // --- Hotel data (name + release days) ---
 // releaseDays represents how many days before arrival the allotment is released
 const allotmentHotels = [
-    { name: "Komaneka Keramas", closeSellData: false, releaseDays: 14, totalUnit: 1 },
+    { name: "Komaneka Keramas", closeSellData: false, releaseDays: 21, totalUnit: 2 },
 
 
     { name: "Komaneka Tanggayuda", closeSellData: false, releaseDays: 14, totalUnit: 1 },
