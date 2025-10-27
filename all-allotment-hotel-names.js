@@ -16,7 +16,7 @@ const allotmentHotels = [
     },
 
 
-    { name: "The Trans Bali", closeSellData: true, releaseDays: 30, totalUnit: 3},
+    { name: "The Trans Bali", closeSellData: true, releaseDays: 30, totalUnit: 3 },
 
 
     { name: "Double Six Luxury", closeSellData: true, releaseDays: 21, totalUnit: 1 },
@@ -110,10 +110,12 @@ function renderHotelSelector() {
         currentReleaseDays = hotel.releaseDays || 0;
         loadHotelData(hotel.name);
 
-        // Update the hotel name title
+        // Update the hotel name title with release days
         const hotelNameTitleElement = document.getElementById('currentHotelNameTitle');
         if (hotelNameTitleElement) {
-            hotelNameTitleElement.textContent = hotel.name;
+            const releaseDays = hotel.releaseDays || 0;
+            const releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
+            hotelNameTitleElement.innerHTML = hotel.name + releaseDaysText;
         }
 
         // Reset scroll position to start from day 1

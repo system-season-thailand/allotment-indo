@@ -71,10 +71,25 @@ table {
     color: rgb(38, 0, 255);
 }
 
+.hotel-name-title .release-days {
+    color: #aa0039;
+    font-weight: 600;
+}
+
 .month-title {
     font-size: clamp(0.9rem, 2vw, 1.2rem);
     text-align: center;
     color: red;
+}
+
+.month-title .month-text {
+    color: black;
+    font-weight: 600;
+}
+
+.month-title .year-text {
+    color: red;
+    font-weight: 600;
 }
 
 /* Content area separation */
@@ -85,6 +100,26 @@ table {
     margin-top: 40px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     border: 1px solid #e0e0e0;
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    opacity: 1;
+    transform: translateY(0);
+    display: none;
+}
+
+/* Show content area when hotel is selected */
+.content-area.show {
+    display: block !important;
+}
+
+/* Content area transition states */
+.content-area.year-transitioning {
+    opacity: 0.3;
+    transform: translateY(10px);
+}
+
+.content-area.year-transitioning-out {
+    opacity: 0;
+    transform: translateY(-10px);
 }
 
 /* Sticky first column cells */
@@ -301,10 +336,114 @@ td.booked {
 
 
 
+/* Year Tabs Styling - Distinct from Month Tabs */
+#yearTabs {
+    margin-bottom: 20px;
+    padding: 15px 0;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    scrollbar-color: #6c757d #f8f9fa;
+    display: none;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    text-align: center;
+}
+
+/* Show year tabs when they have content */
+#yearTabs.show {
+    display: block !important;
+}
+
+/* Custom scrollbar for webkit browsers */
+#yearTabs::-webkit-scrollbar {
+    height: 6px;
+}
+
+#yearTabs::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 3px;
+}
+
+#yearTabs::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 3px;
+}
+
+#yearTabs::-webkit-scrollbar-thumb:hover {
+    background: #495057;
+}
+
+#yearTabs .tab-button {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    font-weight: 600;
+    border: 2px solid #6c757d;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    margin: 0 8px;
+    display: inline-block !important;
+    flex: none !important;
+    flex-shrink: 0 !important;
+    min-width: 80px;
+    vertical-align: top;
+}
+
+#yearTabs .tab-button:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+#yearTabs .tab-button.active {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border-color: #007bff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+}
+
+/* Month Tabs Styling - Keep Original Look */
+#monthTabs {
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+#monthTabs .tab-button {
+    background-color: #eee;
+    border: 1px solid #ccc;
+    font-weight: normal;
+    transition: all 0.2s ease;
+}
+
+#monthTabs .tab-button:hover {
+    background-color: #ddd;
+    transform: none;
+    box-shadow: none;
+}
+
+#monthTabs .tab-button.active {
+    background-color: #007BFF;
+    color: white;
+    transform: none;
+    box-shadow: none;
+}
+
 /* Larger screens only */
 @media (min-width: 768px) {
     .tab-button {
         font-size: clamp(1rem, 1.5vw, 1.2rem);
+    }
+
+    /* Year tabs get larger on desktop */
+    #yearTabs .tab-button {
+        font-size: clamp(1.1rem, 2vw, 1.4rem);
+        padding: clamp(0.7rem, 2.5vw, 1rem) clamp(1.2rem, 4vw, 2.5rem);
+        min-width: 100px;
     }
 
     table {

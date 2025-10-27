@@ -115,14 +115,18 @@ const daysInMonth = {
 
 const hotelSelector = document.getElementById('hotelSelector');
 const monthTabs = document.getElementById('monthTabs');
+const yearTabs = document.getElementById('yearTabs');
 const tableContainer = document.getElementById('tableContainer');
 
 let currentHotel = '';
 let currentMonth = 'January';
+let selectedYear = new Date().getFullYear();
+const supportedYears = [2025, 2026, 2027, 2028, 2029, 2030];
+let userBaseYear = parseInt(localStorage.getItem('UserBaseYear') || String(selectedYear));
 let hotelData = [];
 
-// In new persistence model each hotel stores an array of booking objects in a single
-// row of table `allotment_indo`. Keep the array in memory for quick updates.
+// In new persistence model each hotel stores an array of booking objects per year
+// in table `new_allotment_indo`, keyed by year column (e.g. 2025, 2026).
 let hotelBookings = []; // [{room_id, month_name, day_number, user_code}]
 
 // total allotment units for selected hotel
@@ -133,12 +137,18 @@ let currentReleaseDays = 0;
 let currentSingleUnit = false; // Track if current hotel is single unit
 let currentCloseSellData = true; // Track if current hotel should show closed days
 
-// Fetch (or initialise) bookings JSON for the current hotel
+// Helpers for year handling
+function getNextYear(year) {
+    return year + 1;
+}
+
+// Fetch (or initialise) bookings JSON for the current hotel for selectedYear
 async function loadHotelBookings() {
     if (!currentHotel) return;
+    const yearCol = String(selectedYear); // e.g. "2025"
     const { data, error } = await supabase
-        .from('allotment_indo')
-        .select('bookings')
+        .from('new_allotment_indo')
+        .select(`hotel_name, "${yearCol}"`)
         .eq('hotel_name', currentHotel)
         .single();
 
@@ -148,14 +158,14 @@ async function loadHotelBookings() {
         return;
     }
 
-    if (data && Array.isArray(data.bookings)) {
-        hotelBookings = data.bookings;
+    if (data && Array.isArray(data[yearCol])) {
+        hotelBookings = data[yearCol];
     } else {
         hotelBookings = [];
     }
 }
 
-// --- Load hotel data and render table (replaces hotelSelector change event) ---
+// --- Load hotel structure data and render table (replaces hotelSelector change event) ---
 async function loadHotelData(hotelName) {
     if (!hotelName) return;
     const { data, error } = await supabase.from(hotelName).select('*').order('id');
@@ -176,17 +186,33 @@ async function loadHotelData(hotelName) {
     currentSingleUnit = hotelObj && hotelObj.singleUnit ? true : false;
     currentCloseSellData = hotelObj && hotelObj.closeSellData !== undefined ? hotelObj.closeSellData : true;
 
-    // Load bookings for this hotel
+    // Load bookings for this hotel for selectedYear
     await loadHotelBookings();
 
-    // Update the hotel name title
+    // Update the hotel name title with release days
     const hotelNameTitleElement = document.getElementById('currentHotelNameTitle');
     if (hotelNameTitleElement) {
-        hotelNameTitleElement.textContent = hotelName;
+        const releaseDays = hotelObj && hotelObj.releaseDays ? hotelObj.releaseDays : 0;
+        const releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
+        hotelNameTitleElement.innerHTML = hotelName + releaseDaysText;
     }
 
+    renderYearTabs();
     renderTabs();
     renderMonthTable(currentMonth);
+
+    // Show year tabs and content area after data is loaded
+    const yearTabsElement = document.getElementById('yearTabs');
+    if (yearTabsElement) {
+        yearTabsElement.classList.add('show');
+        console.log('Year tabs should now be visible'); // Debug log
+    }
+
+    const contentAreaElement = document.querySelector('.content-area');
+    if (contentAreaElement) {
+        contentAreaElement.classList.add('show');
+        console.log('Content area should now be visible'); // Debug log
+    }
 }
 
 // --- Call renderHotelSelector on page load ---
@@ -203,7 +229,7 @@ function renderTabs() {
         btn.textContent = month;
         btn.addEventListener('click', () => {
             currentMonth = month;
-            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#monthTabs .tab-button').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             renderMonthTable(month);
 
@@ -216,19 +242,79 @@ function renderTabs() {
         monthTabs.appendChild(btn);
     });
 
-    // Set initial month title
-    const monthTitleElement = document.getElementById('currentMonthTitle');
-    if (monthTitleElement) {
-        monthTitleElement.textContent = currentMonth;
+    // Set initial month-year title
+    updateMonthYearTitle();
+}
+
+function updateMonthYearTitle() {
+    const monthYearTitleElement = document.getElementById('currentMonthYearTitle');
+    if (monthYearTitleElement) {
+        monthYearTitleElement.innerHTML = `<span class="month-text">${currentMonth}</span> - <span class="year-text">${selectedYear}</span>`;
     }
 }
 
-function renderMonthTable(month) {
-    // Update the month title
-    const monthTitleElement = document.getElementById('currentMonthTitle');
-    if (monthTitleElement) {
-        monthTitleElement.textContent = month;
+function renderYearTabs() {
+    if (!yearTabs) return;
+    yearTabs.innerHTML = '';
+
+    // Initialize persistent base year if not set
+    if (!localStorage.getItem('UserBaseYear')) {
+        userBaseYear = selectedYear;
+        localStorage.setItem('UserBaseYear', String(userBaseYear));
     }
+
+    supportedYears.forEach(y => {
+        const btn = document.createElement('button');
+        btn.className = 'tab-button' + (y === selectedYear ? ' active' : '');
+        btn.textContent = String(y);
+        btn.addEventListener('click', async () => {
+            if (selectedYear === y) return;
+
+            // Start transition animation
+            const contentArea = document.querySelector('.content-area');
+            if (contentArea) {
+                contentArea.classList.add('year-transitioning');
+            }
+
+            // Wait for transition to start
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            selectedYear = y;
+            document.querySelectorAll('#yearTabs .tab-button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Update the merged month-year title
+            updateMonthYearTitle();
+
+            // Auto-scroll to the active year button
+            btn.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+
+            // Reload bookings for the newly selected year and repaint
+            await loadHotelBookings();
+            renderMonthTable(currentMonth);
+
+            // Complete transition animation
+            if (contentArea) {
+                contentArea.classList.remove('year-transitioning');
+                contentArea.classList.add('year-transitioning-out');
+
+                // Reset to normal state
+                setTimeout(() => {
+                    contentArea.classList.remove('year-transitioning-out');
+                }, 200);
+            }
+        });
+        yearTabs.appendChild(btn);
+    });
+}
+
+function renderMonthTable(month) {
+    // Update the merged month-year title
+    updateMonthYearTitle();
 
     const days = Array.from({ length: daysInMonth[month] }, (_, i) => i + 1);
 
@@ -264,7 +350,10 @@ function renderMonthTable(month) {
             }
 
             // Parse current month string like "7-8, 11-12, 30"
-            const closedDays = currentCloseSellData ? parseCloseDays(row[month]) : [];
+            // Apply closed only for userBaseYear and its next year
+            const renderYear = selectedYear;
+            const shouldApplyClosed = currentCloseSellData && (renderYear === userBaseYear || renderYear === userBaseYear + 1);
+            const closedDays = shouldApplyClosed ? parseCloseDays(row[month]) : [];
 
             days.forEach(day => {
                 const isClosed = closedDays.includes(day);
@@ -275,21 +364,11 @@ function renderMonthTable(month) {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0); // Reset time to start of day
 
-                    // Build a Date object that represents this table cell
+                    // Build a Date object that represents this table cell in the selected year
                     const monthIndex = months.indexOf(month);
-                    let cellDate = new Date(today.getFullYear(), monthIndex, day);
+                    let cellDate = new Date(selectedYear, monthIndex, day);
 
-                    // Handle year transition - if we're in December and looking at January, it's next year
-                    if (today.getMonth() === 11 && monthIndex === 0) {
-                        cellDate.setFullYear(today.getFullYear() + 1);
-                    }
-                    // If the cell month is ahead of the current month, it's the same year (not previous year)
-                    else if (monthIndex > today.getMonth()) {
-                        // Keep the same year for future months in the same year
-                        cellDate.setFullYear(today.getFullYear());
-                    }
-
-                    // Calculate boundary dates
+                    // Calculate boundary dates based on current date
                     const twoMonthsAgo = new Date(today);
                     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
@@ -297,16 +376,28 @@ function renderMonthTable(month) {
                     releaseBoundary.setDate(releaseBoundary.getDate() + (currentReleaseDays - 1));
 
                     // Cell is released if it's within the release window (2 months ago to today + releaseDays)
-                    isReleased = cellDate >= twoMonthsAgo && cellDate <= releaseBoundary;
+                    // AND the cell date is in the current year or the year we're viewing
+                    const isCurrentYear = selectedYear === today.getFullYear();
+                    const isNextYear = selectedYear === today.getFullYear() + 1;
 
-                    // Debug logging for August days 1-10
-                    if (month === 'August' && day >= 1 && day <= 10) {
-                        console.log(`August ${day}:`, {
+                    if (isCurrentYear || isNextYear) {
+                        isReleased = cellDate >= twoMonthsAgo && cellDate <= releaseBoundary;
+                    } else {
+                        // For years beyond next year, no cells should be released
+                        isReleased = false;
+                    }
+
+                    // Debug logging for current year cells
+                    if (selectedYear === today.getFullYear() && month === 'August' && day >= 1 && day <= 10) {
+                        console.log(`August ${day}, ${selectedYear}:`, {
                             today: today.toDateString(),
                             cellDate: cellDate.toDateString(),
                             releaseBoundary: releaseBoundary.toDateString(),
                             isReleased,
-                            currentReleaseDays
+                            currentReleaseDays,
+                            selectedYear,
+                            isCurrentYear,
+                            isNextYear
                         });
                     }
                 }
@@ -503,8 +594,10 @@ async function persistBooking(cell) {
         if (idx >= 0) hotelBookings.splice(idx, 1);
     }
 
-    // Persist full array
+    // Persist full array into selected year's column of new table
+    const updatePayload = { hotel_name: currentHotel };
+    updatePayload[String(selectedYear)] = hotelBookings;
     await supabase
-        .from('allotment_indo')
-        .upsert({ hotel_name: currentHotel, bookings: hotelBookings }, { onConflict: ['hotel_name'] });
+        .from('new_allotment_indo')
+        .upsert(updatePayload, { onConflict: ['hotel_name'] });
 }
