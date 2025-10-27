@@ -205,13 +205,11 @@ async function loadHotelData(hotelName) {
     const yearTabsElement = document.getElementById('yearTabs');
     if (yearTabsElement) {
         yearTabsElement.classList.add('show');
-        console.log('Year tabs should now be visible'); // Debug log
     }
 
     const contentAreaElement = document.querySelector('.content-area');
     if (contentAreaElement) {
         contentAreaElement.classList.add('show');
-        console.log('Content area should now be visible'); // Debug log
     }
 }
 
@@ -385,20 +383,6 @@ function renderMonthTable(month) {
                     } else {
                         // For years beyond next year, no cells should be released
                         isReleased = false;
-                    }
-
-                    // Debug logging for current year cells
-                    if (selectedYear === today.getFullYear() && month === 'August' && day >= 1 && day <= 10) {
-                        console.log(`August ${day}, ${selectedYear}:`, {
-                            today: today.toDateString(),
-                            cellDate: cellDate.toDateString(),
-                            releaseBoundary: releaseBoundary.toDateString(),
-                            isReleased,
-                            currentReleaseDays,
-                            selectedYear,
-                            isCurrentYear,
-                            isNextYear
-                        });
                     }
                 }
 
