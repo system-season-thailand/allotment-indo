@@ -16,7 +16,7 @@ const allotmentHotels = [
     },
 
 
-    { name: "The Trans Bali", closeSellData: true, releaseDays: 30, totalUnit: 3 },
+    { name: "The Trans Bali", closeSellData: true, releaseDays: 7, totalUnit: 3 },
 
 
     { name: "Double Six Luxury", closeSellData: true, releaseDays: 21, totalUnit: 1 },
