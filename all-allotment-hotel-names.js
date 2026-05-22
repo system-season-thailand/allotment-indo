@@ -2,10 +2,50 @@
 // --- Hotel data (name + release days) ---
 // releaseDays represents how many days before arrival the allotment is released
 const allotmentHotels = [
-    { name: "Komaneka Keramas", closeSellData: false, releaseDays: 14, totalUnit: 1 },
+    {
+        name: "Komaneka Keramas",
+        closeSellData: false,
+        seasonal: true,
+        seasonConfig: [
+            {
+                name: "High Season",
+                periods: [
+                    { startMonth: 7, startDay: 1, endMonth: 8, endDay: 31 },
+                    { startMonth: 12, startDay: 24, endMonth: 1, endDay: 6 }
+                ],
+                totalUnit: 4,
+                unitReleaseDays: [14, 14, 21, 21]
+            },
+            {
+                name: "Low Season",
+                isDefault: true,
+                totalUnit: 1,
+                unitReleaseDays: [14]
+            }
+        ]
+    },
 
 
-    { name: "Komaneka Tanggayuda", closeSellData: false, releaseDays: 14, totalUnit: 1 },
+    {
+        name: "Komaneka Tanggayuda",
+        closeSellData: false,
+        seasonal: true,
+        seasonConfig: [
+            {
+                name: "High Season",
+                periods: [
+                    { startMonth: 7, startDay: 1, endMonth: 8, endDay: 31 },
+                    { startMonth: 12, startDay: 24, endMonth: 1, endDay: 6 }
+                ],
+                unitReleaseDays: [21]
+            },
+            {
+                name: "Low Season",
+                isDefault: true,
+                unitReleaseDays: [14]
+            }
+        ]
+    },
 
 
     {
@@ -107,14 +147,19 @@ function renderHotelSelector() {
         hideDropdown();
         // Set global states and trigger data load
         currentHotel = hotel.name;
-        currentReleaseDays = hotel.releaseDays || 0;
+        currentReleaseDays = hotel.seasonal ? 0 : (hotel.releaseDays || 0);
         loadHotelData(hotel.name);
 
         // Update the hotel name title with release days
         const hotelNameTitleElement = document.getElementById('currentHotelNameTitle');
         if (hotelNameTitleElement) {
-            const releaseDays = hotel.releaseDays || 0;
-            const releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
+            let releaseDaysText = '';
+            if (hotel.seasonal) {
+                releaseDaysText = ` <span class="release-days">(Seasonal)</span>`;
+            } else {
+                const releaseDays = hotel.releaseDays || 0;
+                releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
+            }
             hotelNameTitleElement.innerHTML = hotel.name + releaseDaysText;
         }
 

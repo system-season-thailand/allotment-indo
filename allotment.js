@@ -136,6 +136,7 @@ let currentTotalUnit = 1;
 let currentReleaseDays = 0;
 let currentSingleUnit = false; // Track if current hotel is single unit
 let currentCloseSellData = true; // Track if current hotel should show closed days
+let currentHotelObj = null; // Full hotel object for seasonal config access
 
 // Helpers for year handling
 function getNextYear(year) {
@@ -185,6 +186,7 @@ async function loadHotelData(hotelName) {
     currentRoomUnits = hotelObj && hotelObj.units ? hotelObj.units : {};
     currentSingleUnit = hotelObj && hotelObj.singleUnit ? true : false;
     currentCloseSellData = hotelObj && hotelObj.closeSellData !== undefined ? hotelObj.closeSellData : true;
+    currentHotelObj = hotelObj || null;
 
     // Load bookings for this hotel for selectedYear
     await loadHotelBookings();
@@ -192,8 +194,13 @@ async function loadHotelData(hotelName) {
     // Update the hotel name title with release days
     const hotelNameTitleElement = document.getElementById('currentHotelNameTitle');
     if (hotelNameTitleElement) {
-        const releaseDays = hotelObj && hotelObj.releaseDays ? hotelObj.releaseDays : 0;
-        const releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
+        let releaseDaysText = '';
+        if (hotelObj && hotelObj.seasonal) {
+            releaseDaysText = ` <span class="release-days">(Seasonal)</span>`;
+        } else {
+            const releaseDays = hotelObj && hotelObj.releaseDays ? hotelObj.releaseDays : 0;
+            releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
+        }
         hotelNameTitleElement.innerHTML = hotelName + releaseDaysText;
     }
 
@@ -311,8 +318,9 @@ function renderYearTabs() {
 }
 
 function renderMonthTable(month) {
-    // Update the merged month-year title
+    // Update the merged month-year title and season info bar
     updateMonthYearTitle();
+    updateHotelSeasonInfo(month);
 
     const days = Array.from({ length: daysInMonth[month] }, (_, i) => i + 1);
 
@@ -320,8 +328,10 @@ function renderMonthTable(month) {
     days.forEach(day => html += `<th>${day}</th>`);
     html += `</tr></thead><tbody>`;
 
+    const isSeasonalHotel = !!(currentHotelObj && currentHotelObj.seasonal);
+
     // --- NEW LOGIC: Render single Total Unit row at top if totalUnit:1 and no custom units ---
-    const isSingleUnit = currentTotalUnit === 1 && (!currentRoomUnits || Object.keys(currentRoomUnits).length === 0);
+    const isSingleUnit = !isSeasonalHotel && currentTotalUnit === 1 && (!currentRoomUnits || Object.keys(currentRoomUnits).length === 0);
     if (isSingleUnit) {
         html += `<tr class="unit-row"><td class="sticky-col">Total Unit</td>`;
         days.forEach(() => html += `<th>1</th>`);
@@ -330,14 +340,36 @@ function renderMonthTable(month) {
 
     hotelData.forEach(row => {
         const roomType = row["Room Type"];
-        const roomUnits = currentRoomUnits[roomType] || currentTotalUnit;
+
+        let roomUnits;
+        if (isSeasonalHotel) {
+            roomUnits = getMaxUnitsForMonth(currentHotelObj, month, roomType);
+        } else {
+            roomUnits = currentRoomUnits[roomType] || currentTotalUnit;
+        }
 
         // Only render per-room Total Unit row if not single-unit mode
         if (!isSingleUnit) {
             html += `<tr class="unit-row" data-room-type-unit="${roomType}"><td class="sticky-col">Total Unit</td>`;
-            days.forEach(() => html += `<th>${roomUnits}</th>`);
+            days.forEach(day => {
+                if (isSeasonalHotel) {
+                    const monthNum = months.indexOf(month) + 1;
+                    const season = getSeasonConfigForDay(currentHotelObj, monthNum, day);
+                    const units = (season && season.totalUnit !== undefined)
+                        ? season.totalUnit
+                        : (currentRoomUnits[roomType] || currentTotalUnit || 1);
+                    html += `<th>${units}</th>`;
+                } else {
+                    html += `<th>${roomUnits}</th>`;
+                }
+            });
             html += `</tr>`;
         }
+
+        // Apply closed only for userBaseYear and its next year
+        const renderYear = selectedYear;
+        const shouldApplyClosed = currentCloseSellData && (renderYear === userBaseYear || renderYear === userBaseYear + 1);
+        const closedDays = shouldApplyClosed ? parseCloseDays(row[month]) : [];
 
         // generate one availability row per unit
         for (let u = 1; u <= roomUnits; u++) {
@@ -347,42 +379,55 @@ function renderMonthTable(month) {
                 html += `<td rowspan="${roomUnits}" class="sticky-col">${roomType}</td>`;
             }
 
-            // Parse current month string like "7-8, 11-12, 30"
-            // Apply closed only for userBaseYear and its next year
-            const renderYear = selectedYear;
-            const shouldApplyClosed = currentCloseSellData && (renderYear === userBaseYear || renderYear === userBaseYear + 1);
-            const closedDays = shouldApplyClosed ? parseCloseDays(row[month]) : [];
-
             days.forEach(day => {
                 const isClosed = closedDays.includes(day);
 
+                // For seasonal hotels, check if this unit is active today and pick releaseDays
+                let effectiveReleaseDays = currentReleaseDays;
+                let isOutOfSeason = false;
+
+                if (isSeasonalHotel) {
+                    const monthNum = months.indexOf(month) + 1;
+                    const season = getSeasonConfigForDay(currentHotelObj, monthNum, day);
+                    if (season) {
+                        const seasonTotalUnit = season.totalUnit !== undefined
+                            ? season.totalUnit
+                            : (currentRoomUnits[roomType] || 1);
+                        if (u > seasonTotalUnit) {
+                            isOutOfSeason = true;
+                        } else {
+                            effectiveReleaseDays = season.unitReleaseDays
+                                ? (season.unitReleaseDays[u - 1] || 0)
+                                : 0;
+                        }
+                    }
+                }
+
+                if (isOutOfSeason) {
+                    html += `<td class="out-of-season" data-day="${day}" data-month="${month}"></td>`;
+                    return;
+                }
+
                 // Determine if this cell falls inside the "released" window
                 let isReleased = false;
-                if (!isClosed && (currentReleaseDays || 0) > 0) {
+                if (!isClosed && effectiveReleaseDays > 0) {
                     const today = new Date();
-                    today.setHours(0, 0, 0, 0); // Reset time to start of day
+                    today.setHours(0, 0, 0, 0);
 
-                    // Build a Date object that represents this table cell in the selected year
                     const monthIndex = months.indexOf(month);
                     let cellDate = new Date(selectedYear, monthIndex, day);
 
-                    // Calculate boundary dates based on current date
                     const twoMonthsAgo = new Date(today);
                     twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
                     const releaseBoundary = new Date(today);
-                    releaseBoundary.setDate(releaseBoundary.getDate() + (currentReleaseDays - 1));
+                    releaseBoundary.setDate(releaseBoundary.getDate() + (effectiveReleaseDays - 1));
 
-                    // Cell is released if it's within the release window (2 months ago to today + releaseDays)
-                    // AND the cell date is in the current year or the year we're viewing
                     const isCurrentYear = selectedYear === today.getFullYear();
                     const isNextYear = selectedYear === today.getFullYear() + 1;
 
                     if (isCurrentYear || isNextYear) {
                         isReleased = cellDate >= twoMonthsAgo && cellDate <= releaseBoundary;
-                    } else {
-                        // For years beyond next year, no cells should be released
-                        isReleased = false;
                     }
                 }
 
@@ -436,6 +481,7 @@ function attachCellListeners() {
 
         cell.addEventListener('mousedown', e => {
             if (!isEditor) return;
+            if (cell.classList.contains('out-of-season')) return;
             e.preventDefault();
 
             dragChanged = [];
@@ -509,6 +555,196 @@ function handleDragHover(cell) {
     // No drag hover logic for simple booking
 }
 
+
+// Builds the season detail HTML for a given month and returns it as a string.
+// Used both to populate the modal and to decide whether to show the button.
+function buildSeasonInfoHTML(month) {
+    if (!currentHotelObj) return '';
+
+    // ── Non-seasonal hotel ──────────────────────────────────────────────────
+    if (!currentHotelObj.seasonal) {
+        const rows = [];
+        if (currentRoomUnits && Object.keys(currentRoomUnits).length > 0) {
+            Object.entries(currentRoomUnits).forEach(([rt, u]) => {
+                rows.push(`
+                    <div class="smd-row">
+                        <span class="smd-room">${rt}</span>
+                        <span class="smd-units">${u} Unit${u !== 1 ? 's' : ''}</span>
+                        ${currentReleaseDays > 0 ? `<span class="smd-release">${String(currentReleaseDays).padStart(2, '0')} Days Release</span>` : ''}
+                    </div>`);
+            });
+        } else {
+            const u = currentTotalUnit || 1;
+            rows.push(`
+                <div class="smd-row">
+                    <span class="smd-units">${u} Unit${u !== 1 ? 's' : ''}</span>
+                    ${currentReleaseDays > 0 ? `<span class="smd-release">${String(currentReleaseDays).padStart(2, '0')} Days Release</span>` : ''}
+                </div>`);
+        }
+        return rows.join('');
+    }
+
+    // ── Seasonal hotel: find contiguous season ranges in this month ─────────
+    const daysCount = daysInMonth[month];
+    const monthNum  = months.indexOf(month) + 1;
+    const monthAbbr = month.slice(0, 3);
+
+    const ranges = [];
+    let curSeason  = null;
+    let rangeStart = 1;
+    for (let d = 1; d <= daysCount; d++) {
+        const s = getSeasonConfigForDay(currentHotelObj, monthNum, d);
+        if (s !== curSeason) {
+            if (curSeason !== null) ranges.push({ season: curSeason, startDay: rangeStart, endDay: d - 1 });
+            curSeason  = s;
+            rangeStart = d;
+        }
+    }
+    if (curSeason !== null) ranges.push({ season: curSeason, startDay: rangeStart, endDay: daysCount });
+
+    const isMixed = ranges.length > 1;
+
+    return ranges.map(({ season, startDay, endDay }) => {
+        if (!season) return '';
+
+        const dateTag = isMixed
+            ? `<span class="smd-date-range">${monthAbbr} ${startDay}–${endDay}</span>`
+            : '';
+        const seasonTag = `<span class="smd-season-name ${season.isDefault ? 'low' : 'high'}">${season.name}</span>`;
+
+        let unitRows = '';
+
+        if (season.totalUnit !== undefined) {
+            // Explicit unit count (Keramas-style) — group consecutive units by releaseDays
+            const total = season.totalUnit;
+            const rdArr = season.unitReleaseDays || [];
+            const groups = [];
+            let gi = 0;
+            while (gi < total) {
+                const rd = rdArr[gi] || 0;
+                let gj = gi + 1;
+                while (gj < total && (rdArr[gj] || 0) === rd) gj++;
+                const unitLabel = (gj - gi === 1) ? `Unit ${gi + 1}` : `Unit ${gi + 1}–${gj}`;
+                groups.push(`
+                    <div class="smd-unit-line">
+                        <span class="smd-unit-label">${unitLabel}</span>
+                        <span class="smd-release">${String(rd).padStart(2, '0')} Days Release</span>
+                    </div>`);
+                gi = gj;
+            }
+            unitRows = `
+                <div class="smd-unit-summary">${total} Unit${total !== 1 ? 's' : ''}</div>
+                ${groups.join('')}`;
+        } else {
+            // Room-type style (Tanggayuda) — releaseDays per unit from seasonConfig
+            const rd = season.unitReleaseDays ? (season.unitReleaseDays[0] || 0) : 0;
+            if (hotelData && hotelData.length > 0) {
+                unitRows = hotelData.map(row => {
+                    const rt = row['Room Type'];
+                    const u  = currentRoomUnits[rt] || currentTotalUnit || 1;
+                    return `
+                        <div class="smd-unit-line">
+                            <span class="smd-room">${rt}</span>
+                            <span class="smd-units">${u} Unit${u !== 1 ? 's' : ''}</span>
+                            ${rd > 0 ? `<span class="smd-release">${String(rd).padStart(2, '0')} Days Release</span>` : ''}
+                        </div>`;
+                }).join('');
+            } else if (rd > 0) {
+                unitRows = `<div class="smd-unit-line"><span class="smd-release">${String(rd).padStart(2, '0')} Days Release</span></div>`;
+            }
+        }
+
+        return `
+            <div class="smd-season-block">
+                <div class="smd-season-header">${dateTag}${seasonTag}</div>
+                <div class="smd-season-details">${unitRows}</div>
+            </div>`;
+    }).filter(Boolean).join('');
+}
+
+// Show / hide the "More Details" button and cache the content for the modal
+function updateHotelSeasonInfo(month) {
+    const btn = document.getElementById('seasonMoreBtn');
+    if (!btn) return;
+
+    const html = buildSeasonInfoHTML(month);
+    btn._seasonHTML  = html;
+    btn._seasonMonth = month;
+    btn.style.display = html ? 'inline-flex' : 'none';
+
+    // If the modal is currently open, refresh its body live
+    const overlay = document.getElementById('seasonModal');
+    if (overlay && overlay.classList.contains('open')) {
+        document.getElementById('seasonModalBody').innerHTML        = html;
+        document.getElementById('seasonModalMonthLabel').textContent = `${month} ${selectedYear}`;
+    }
+}
+
+function openSeasonModal() {
+    const btn     = document.getElementById('seasonMoreBtn');
+    const overlay = document.getElementById('seasonModal');
+    if (!overlay || !btn) return;
+
+    document.getElementById('seasonModalHotelName').textContent  = currentHotel || '';
+    document.getElementById('seasonModalMonthLabel').textContent = `${btn._seasonMonth || currentMonth} ${selectedYear}`;
+    document.getElementById('seasonModalBody').innerHTML         = btn._seasonHTML || '';
+
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSeasonModal() {
+    const overlay = document.getElementById('seasonModal');
+    if (!overlay) return;
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function handleSeasonModalBackdrop(e) {
+    if (e.target === document.getElementById('seasonModal')) closeSeasonModal();
+}
+
+// Returns true if (monthNum, day) falls within the given season period (handles year-wrap)
+function isDateInSeasonPeriod(monthNum, day, period) {
+    const { startMonth, startDay, endMonth, endDay } = period;
+    if (startMonth > endMonth) {
+        // Wraps around year end (e.g. Dec 24 – Jan 6)
+        return (monthNum > startMonth || (monthNum === startMonth && day >= startDay)) ||
+               (monthNum < endMonth || (monthNum === endMonth && day <= endDay));
+    }
+    return (monthNum > startMonth || (monthNum === startMonth && day >= startDay)) &&
+           (monthNum < endMonth || (monthNum === endMonth && day <= endDay));
+}
+
+// Returns the matching seasonConfig entry for a given (monthNum, day), or the default entry
+function getSeasonConfigForDay(hotelObj, monthNum, day) {
+    if (!hotelObj || !hotelObj.seasonal || !hotelObj.seasonConfig) return null;
+    for (const season of hotelObj.seasonConfig) {
+        if (season.isDefault) continue;
+        if (season.periods && season.periods.some(p => isDateInSeasonPeriod(monthNum, day, p))) {
+            return season;
+        }
+    }
+    return hotelObj.seasonConfig.find(s => s.isDefault) || null;
+}
+
+// Returns the maximum unit count across all seasons that appear in a given month (for row sizing)
+function getMaxUnitsForMonth(hotelObj, monthName, roomType) {
+    if (!hotelObj || !hotelObj.seasonal || !hotelObj.seasonConfig) {
+        return currentRoomUnits[roomType] || currentTotalUnit;
+    }
+    const monthNum = months.indexOf(monthName) + 1;
+    const daysCount = daysInMonth[monthName];
+    let maxUnits = 0;
+    for (let d = 1; d <= daysCount; d++) {
+        const season = getSeasonConfigForDay(hotelObj, monthNum, d);
+        const units = (season && season.totalUnit !== undefined)
+            ? season.totalUnit
+            : (currentRoomUnits[roomType] || currentTotalUnit || 1);
+        if (units > maxUnits) maxUnits = units;
+    }
+    return maxUnits || 1;
+}
 
 // Parse string like "1-3, 5, 7-9" to [1,2,3,5,7,8,9]
 function parseCloseDays(text) {

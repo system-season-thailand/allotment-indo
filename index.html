@@ -49,6 +49,11 @@
 
     <div class="content-area">
         <h3 id="currentHotelNameTitle" class="hotel-name-title"></h3>
+        <div class="season-trigger-wrap">
+            <button id="seasonMoreBtn" class="season-more-btn" style="display:none;" onclick="openSeasonModal()">
+                More Details
+            </button>
+        </div>
         <h3 id="currentMonthYearTitle" class="month-title"></h3>
         <div id="tableContainer" style="overflow-x: auto;"></div>
     </div>
@@ -78,6 +83,18 @@
 
 
 
+
+    <!-- Season Details Modal -->
+    <div id="seasonModal" class="season-modal-overlay" onclick="handleSeasonModalBackdrop(event)">
+        <div class="season-modal-box">
+            <button class="season-modal-close" onclick="closeSeasonModal()">&times;</button>
+            <div class="season-modal-header">
+                <div id="seasonModalHotelName" class="season-modal-hotel"></div>
+                <div id="seasonModalMonthLabel" class="season-modal-month"></div>
+            </div>
+            <div id="seasonModalBody" class="season-modal-body"></div>
+        </div>
+    </div>
 
     <!-- Notification System -->
     <div id="notificationContainer" class="notification-container">
