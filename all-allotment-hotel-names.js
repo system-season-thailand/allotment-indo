@@ -20,7 +20,7 @@ const allotmentHotels = [
                 name: "Low Season",
                 isDefault: true,
                 totalUnit: 1,
-                unitReleaseDays: [14]
+                unitReleaseDays: [7]
             }
         ]
     },
