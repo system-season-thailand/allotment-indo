@@ -1,6 +1,7 @@
 
 // --- Hotel data (name + release days) ---
 // releaseDays represents how many days before arrival the allotment is released
+// validUntil (optional, "YYYY-MM-DD") is the last day the allotment can be used; later dates are locked
 const allotmentHotels = [
     {
         name: "Komaneka Keramas",
@@ -63,6 +64,28 @@ const allotmentHotels = [
 
 
     { name: "Tribe Kuta", closeSellData: true, releaseDays: 14, totalUnit: 1 },
+
+
+    {
+        name: "Ulu Segara", closeSellData: false, validUntil: "2027-03-31",
+        // Individual dates with no allotment, keyed "YYYY-MM" -> [day, ...]
+        blockedDates: {
+            "2026-10": [1, 2, 3, 4, 5, 6, 7, 13, 28, 29],
+            "2026-11": [27],
+            "2026-12": [27, 28, 29, 30, 31],
+            "2027-01": [2, 7, 8, 9]
+        },
+        units: {
+            "One Bedroom Villa": 2
+        }
+    },
+
+
+    {
+        name: "Indigo Bali Seminyak", closeSellData: false, validUntil: "2026-12-31", units: {
+            "Standard Room": 2
+        }
+    },
 
 ];
 
@@ -152,17 +175,10 @@ function renderHotelSelector() {
         currentReleaseDays = hotel.seasonal ? 0 : (hotel.releaseDays || 0);
         loadHotelData(hotel.name);
 
-        // Update the hotel name title with release days
+        // Update the hotel name title with release days and validity
         const hotelNameTitleElement = document.getElementById('currentHotelNameTitle');
         if (hotelNameTitleElement) {
-            let releaseDaysText = '';
-            if (hotel.seasonal) {
-                releaseDaysText = ` <span class="release-days">(Seasonal)</span>`;
-            } else {
-                const releaseDays = hotel.releaseDays || 0;
-                releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
-            }
-            hotelNameTitleElement.innerHTML = hotel.name + releaseDaysText;
+            hotelNameTitleElement.innerHTML = buildHotelTitleHTML(hotel, hotel.name);
         }
 
         // Reset scroll position to start from day 1

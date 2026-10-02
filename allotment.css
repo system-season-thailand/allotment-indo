@@ -76,6 +76,11 @@ table {
     font-weight: 600;
 }
 
+.hotel-name-title .valid-until {
+    color: #b26a00;
+    font-weight: 600;
+}
+
 /* ── More Details trigger button ─────────────────────────────────────── */
 .season-trigger-wrap {
     display: flex;
@@ -113,7 +118,12 @@ table {
 
 /* ── Season modal overlay ────────────────────────────────────────────── */
 .season-modal-overlay {
-    display: none;
+    /* The overlay stays in the layout at all times. Toggling `display` would
+       cancel both transitions: an element leaving display:none has no previous
+       state to animate from, and display:none on close removes it before the
+       fade can run. `visibility` keeps it inert while hidden, and is delayed by
+       the fade duration on close so the fade-out finishes first. */
+    display: flex;
     position: fixed;
     inset: 0;
     z-index: 4000;
@@ -124,16 +134,20 @@ table {
     justify-content: center;
     padding: 16px;
     opacity: 0;
-    transition: opacity 0.25s ease;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0s linear 0.25s;
 }
 
 .season-modal-overlay.open {
-    display: flex;
     opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.25s ease, visibility 0s linear 0s;
 }
 
-/* Two-step animation: display:flex is set immediately, then we rely on the
-   box's own transform so the overlay fade and box pop feel independent. */
+/* The box animates on its own timing, so the panel pops in while the backdrop
+   washes in behind it. */
 .season-modal-box {
     position: relative;
     background: #fff;
@@ -152,6 +166,15 @@ table {
 .season-modal-overlay.open .season-modal-box {
     transform: scale(1) translateY(0);
     opacity: 1;
+}
+
+/* Keep the gentle fade but drop the pop for anyone who asks for less motion. */
+@media (prefers-reduced-motion: reduce) {
+
+    .season-modal-box,
+    .season-modal-overlay.open .season-modal-box {
+        transform: none;
+    }
 }
 
 /* Close button */
@@ -311,6 +334,16 @@ table {
     margin-left: auto;
 }
 
+.smd-valid {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #b26a00;
+    background: #fff6e5;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
 .month-title {
     font-size: clamp(0.9rem, 2vw, 1.2rem);
     text-align: center;
@@ -448,6 +481,11 @@ tr.unit-row th {
     background-color: rgb(0, 141, 0);
 }
 
+.reference-color.expired {
+    background-color: #e4e4e4;
+    background-image: repeating-linear-gradient(45deg, transparent 0 4px, rgba(0, 0, 0, 0.15) 4px 6px);
+}
+
 /* Smooth cell borders */
 table,
 th,
@@ -503,6 +541,19 @@ td.out-of-season {
     background-color: #d0d0d0;
     color: #999;
     cursor: not-allowed;
+}
+
+/* No allotment on this date — past the hotel's validUntil, or individually blocked */
+td.expired,
+td.blocked {
+    background-color: #e4e4e4;
+    background-image: repeating-linear-gradient(45deg, transparent 0 4px, rgba(0, 0, 0, 0.15) 4px 6px);
+    color: #999;
+    cursor: not-allowed;
+}
+
+tr.unit-row th.expired-unit {
+    background: #b9a3c7;
 }
 
 

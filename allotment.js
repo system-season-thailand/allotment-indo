@@ -143,6 +143,68 @@ function getNextYear(year) {
     return year + 1;
 }
 
+// --- Allotment validity (optional "validUntil" in the hotel list) ---
+// Returns the last day the hotel's allotment can be used (local midnight), or null if it has no end date
+function getHotelValidUntil(hotelObj) {
+    if (!hotelObj || !hotelObj.validUntil) return null;
+    const [y, m, d] = String(hotelObj.validUntil).split('-').map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+}
+
+// Individual blocked dates (optional "blockedDates" on a hotel: { "YYYY-MM": [day, ...] })
+// Returns the set of blocked day numbers for that year/month — empty when the hotel has none
+function getBlockedDaysForMonth(hotelObj, year, monthIdx) {
+    const map = hotelObj && hotelObj.blockedDates;
+    if (!map) return new Set();
+    const key = `${year}-${String(monthIdx + 1).padStart(2, '0')}`;
+    return new Set(map[key] || []);
+}
+
+// Formats a date as "31 Mar 2027"
+function formatShortDate(date) {
+    return `${String(date.getDate()).padStart(2, '0')} ${months[date.getMonth()].slice(0, 3)} ${date.getFullYear()}`;
+}
+
+// Hotel title: name + release days (or Seasonal) + validity
+function buildHotelTitleHTML(hotelObj, hotelName) {
+    let html = hotelName || (hotelObj ? hotelObj.name : '');
+    if (hotelObj && hotelObj.seasonal) {
+        html += ` <span class="release-days">(Seasonal)</span>`;
+    } else {
+        const releaseDays = hotelObj && hotelObj.releaseDays ? hotelObj.releaseDays : 0;
+        if (releaseDays > 0) {
+            html += ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>`;
+        }
+    }
+    const validUntil = getHotelValidUntil(hotelObj);
+    if (validUntil) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const label = today > validUntil ? 'Expired' : 'Valid until';
+        html += ` <span class="valid-until">(${label} ${formatShortDate(validUntil)})</span>`;
+    }
+    return html;
+}
+
+// "Valid until" line for the More Details modal ('' when the hotel has no end date)
+function buildValidityRowHTML() {
+    const validUntil = getHotelValidUntil(currentHotelObj);
+    if (!validUntil) return '';
+    return `
+        <div class="smd-row">
+            <span class="smd-valid">Valid until ${formatShortDate(validUntil)}</span>
+        </div>`;
+}
+
+// Cells that can't be booked: units outside their season, dates after the
+// allotment's validUntil, or individually blocked dates
+function isLockedCell(cell) {
+    return cell.classList.contains('out-of-season')
+        || cell.classList.contains('expired')
+        || cell.classList.contains('blocked');
+}
+
 // Fetch (or initialise) bookings JSON for the current hotel for selectedYear
 async function loadHotelBookings() {
     if (!currentHotel) return;
@@ -191,17 +253,10 @@ async function loadHotelData(hotelName) {
     // Load bookings for this hotel for selectedYear
     await loadHotelBookings();
 
-    // Update the hotel name title with release days
+    // Update the hotel name title with release days and validity
     const hotelNameTitleElement = document.getElementById('currentHotelNameTitle');
     if (hotelNameTitleElement) {
-        let releaseDaysText = '';
-        if (hotelObj && hotelObj.seasonal) {
-            releaseDaysText = ` <span class="release-days">(Seasonal)</span>`;
-        } else {
-            const releaseDays = hotelObj && hotelObj.releaseDays ? hotelObj.releaseDays : 0;
-            releaseDaysText = releaseDays > 0 ? ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>` : '';
-        }
-        hotelNameTitleElement.innerHTML = hotelName + releaseDaysText;
+        hotelNameTitleElement.innerHTML = buildHotelTitleHTML(hotelObj, hotelName);
     }
 
     renderYearTabs();
@@ -330,11 +385,24 @@ function renderMonthTable(month) {
 
     const isSeasonalHotel = !!(currentHotelObj && currentHotelObj.seasonal);
 
+    // Dates with no usable allotment: past the hotel's validUntil, or individually blocked
+    const validUntil = getHotelValidUntil(currentHotelObj);
+    const monthIdx = months.indexOf(month);
+    const blockedDays = getBlockedDaysForMonth(currentHotelObj, selectedYear, monthIdx);
+    const isExpiredDay = day => !!validUntil && new Date(selectedYear, monthIdx, day) > validUntil;
+    const isBlockedDay = day => blockedDays.has(day);
+    const isLockedDay = day => isExpiredDay(day) || isBlockedDay(day);
+    const expiredTitle = validUntil ? `Allotment valid until ${formatShortDate(validUntil)}` : '';
+    // A blocked date inside the validity window is still shown as "not valid"
+    const lockedClass = day => isBlockedDay(day) ? 'blocked' : 'expired';
+    const lockedTitle = day => isBlockedDay(day) ? 'Allotment not valid on this date' : expiredTitle;
+    const hasLockedDays = days.some(isLockedDay);
+
     // --- NEW LOGIC: Render single Total Unit row at top if totalUnit:1 and no custom units ---
     const isSingleUnit = !isSeasonalHotel && currentTotalUnit === 1 && (!currentRoomUnits || Object.keys(currentRoomUnits).length === 0);
     if (isSingleUnit) {
         html += `<tr class="unit-row"><td class="sticky-col">Total Unit</td>`;
-        days.forEach(() => html += `<th>1</th>`);
+        days.forEach(day => html += isLockedDay(day) ? `<th class="expired-unit">0</th>` : `<th>1</th>`);
         html += `</tr>`;
     }
 
@@ -352,7 +420,9 @@ function renderMonthTable(month) {
         if (!isSingleUnit) {
             html += `<tr class="unit-row" data-room-type-unit="${roomType}"><td class="sticky-col">Total Unit</td>`;
             days.forEach(day => {
-                if (isSeasonalHotel) {
+                if (isLockedDay(day)) {
+                    html += `<th class="expired-unit">0</th>`;
+                } else if (isSeasonalHotel) {
                     const monthNum = months.indexOf(month) + 1;
                     const season = getSeasonConfigForDay(currentHotelObj, monthNum, day);
                     const units = (season && season.totalUnit !== undefined)
@@ -380,6 +450,12 @@ function renderMonthTable(month) {
             }
 
             days.forEach(day => {
+                // No allotment on this date (past validUntil, or individually blocked)
+                if (isLockedDay(day)) {
+                    html += `<td class="${lockedClass(day)}" data-day="${day}" data-month="${month}" title="${lockedTitle(day)}"></td>`;
+                    return;
+                }
+
                 const isClosed = closedDays.includes(day);
 
                 // For seasonal hotels, check if this unit is active today and pick releaseDays
@@ -445,6 +521,10 @@ function renderMonthTable(month) {
     html += `</tbody></table>`;
     tableContainer.innerHTML = html;
 
+    // Show the "not valid" legend only when this month actually has locked dates
+    const legendExpired = document.getElementById('legendExpired');
+    if (legendExpired) legendExpired.style.display = hasLockedDays ? '' : 'none';
+
     // Paint bookings from hotelBookings array
     paintBookings(month);
 
@@ -462,12 +542,15 @@ function paintBookings(month) {
             if (cell) {
                 // Store original state if not already stored
                 if (!cell.dataset.originalClass) {
-                    const origClass = cell.classList.contains('closed') ? 'closed' : (cell.classList.contains('released') ? 'released' : 'available');
+                    const origClass = cell.classList.contains('expired') ? 'expired'
+                        : (cell.classList.contains('blocked') ? 'blocked'
+                            : (cell.classList.contains('closed') ? 'closed'
+                                : (cell.classList.contains('released') ? 'released' : 'available')));
                     cell.dataset.originalClass = origClass;
                     cell.dataset.originalContent = cell.innerHTML;
                 }
 
-                cell.classList.remove('available', 'released', 'closed');
+                cell.classList.remove('available', 'released', 'closed', 'expired', 'blocked');
                 cell.classList.add('booked');
                 cell.innerHTML = `${day_number}<br>(${user_code})`;
             }
@@ -481,7 +564,7 @@ function attachCellListeners() {
 
         cell.addEventListener('mousedown', e => {
             if (!isEditor) return;
-            if (cell.classList.contains('out-of-season')) return;
+            if (isLockedCell(cell)) return;
             e.preventDefault();
 
             dragChanged = [];
@@ -516,7 +599,7 @@ function applyDragEffect(cell) {
 
     const dayText = cell.dataset.day;
 
-    if (dragMode === 'book' && !cell.classList.contains('booked')) {
+    if (dragMode === 'book' && !cell.classList.contains('booked') && !isLockedCell(cell)) {
         // store original
         if (!cell.dataset.originalClass) {
             const origClass = cell.classList.contains('closed') ? 'closed' : (cell.classList.contains('released') ? 'released' : 'available');
@@ -581,7 +664,7 @@ function buildSeasonInfoHTML(month) {
                     ${currentReleaseDays > 0 ? `<span class="smd-release">${String(currentReleaseDays).padStart(2, '0')} Days Release</span>` : ''}
                 </div>`);
         }
-        return rows.join('');
+        return rows.join('') + buildValidityRowHTML();
     }
 
     // ── Seasonal hotel: find contiguous season ranges in this month ─────────
@@ -659,7 +742,7 @@ function buildSeasonInfoHTML(month) {
                 <div class="smd-season-header">${dateTag}${seasonTag}</div>
                 <div class="smd-season-details">${unitRows}</div>
             </div>`;
-    }).filter(Boolean).join('');
+    }).filter(Boolean).join('') + buildValidityRowHTML();
 }
 
 // Show / hide the "More Details" button and cache the content for the modal
