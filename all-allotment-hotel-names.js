@@ -75,8 +75,11 @@ const allotmentHotels = [
             "2026-12": [27, 28, 29, 30, 31],
             "2027-01": [2, 7, 8, 9]
         },
-        units: {
-            "One Bedroom Villa": 2
+        // Room types shown for this hotel. The key is the "Room Type" value in
+        // this hotel's Supabase table; label is the name shown in the dashboard.
+        // Rows in the table that aren't listed here are not displayed.
+        roomTypes: {
+            "One BR Villa": { label: "One BR Pool Villa", units: 2 }
         }
     },
 

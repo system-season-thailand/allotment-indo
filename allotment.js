@@ -161,6 +161,31 @@ function getBlockedDaysForMonth(hotelObj, year, monthIdx) {
     return new Set(map[key] || []);
 }
 
+// --- Room types (optional "roomTypes" on a hotel) ---
+// { "<Room Type as written in the hotel's table>": { label: "<name shown>", units: <n> } }
+// When a hotel defines it, it decides which rows of that hotel's table are shown,
+// what each is called, and how many units it has. Rows not listed are ignored.
+function getRoomTypeConfig(hotelObj, roomType) {
+    const map = hotelObj && hotelObj.roomTypes;
+    if (!map) return null;
+    if (map[roomType]) return map[roomType];
+    // Also match the display label, so renaming the row in the table to match
+    // the label later keeps working instead of hiding the room type.
+    return Object.values(map).find(cfg => cfg && cfg.label === roomType) || null;
+}
+
+// The name to show for a table row's room type
+function getRoomTypeLabel(hotelObj, roomType) {
+    const cfg = getRoomTypeConfig(hotelObj, roomType);
+    return (cfg && cfg.label) || roomType;
+}
+
+// Whether a row from the hotel's table should be rendered at all
+function isRoomTypeVisible(hotelObj, roomType) {
+    if (!hotelObj || !hotelObj.roomTypes) return true; // no list -> show every row
+    return !!getRoomTypeConfig(hotelObj, roomType);
+}
+
 // Formats a date as "31 Mar 2027"
 function formatShortDate(date) {
     return `${String(date.getDate()).padStart(2, '0')} ${months[date.getMonth()].slice(0, 3)} ${date.getFullYear()}`;
@@ -245,7 +270,16 @@ async function loadHotelData(hotelName) {
     }
 
     currentTotalUnit = hotelObj && hotelObj.totalUnit ? hotelObj.totalUnit : 1;
-    currentRoomUnits = hotelObj && hotelObj.units ? hotelObj.units : {};
+    // A hotel's roomTypes list (when it has one) supplies the displayed names and
+    // their unit counts; otherwise fall back to the plain units map.
+    if (hotelObj && hotelObj.roomTypes) {
+        currentRoomUnits = {};
+        Object.entries(hotelObj.roomTypes).forEach(([tableName, cfg]) => {
+            currentRoomUnits[(cfg && cfg.label) || tableName] = (cfg && cfg.units) || 1;
+        });
+    } else {
+        currentRoomUnits = hotelObj && hotelObj.units ? hotelObj.units : {};
+    }
     currentSingleUnit = hotelObj && hotelObj.singleUnit ? true : false;
     currentCloseSellData = hotelObj && hotelObj.closeSellData !== undefined ? hotelObj.closeSellData : true;
     currentHotelObj = hotelObj || null;
@@ -407,7 +441,10 @@ function renderMonthTable(month) {
     }
 
     hotelData.forEach(row => {
-        const roomType = row["Room Type"];
+        // Ignore rows this hotel doesn't list in roomTypes
+        if (!isRoomTypeVisible(currentHotelObj, row["Room Type"])) return;
+
+        const roomType = getRoomTypeLabel(currentHotelObj, row["Room Type"]);
 
         let roomUnits;
         if (isSeasonalHotel) {
