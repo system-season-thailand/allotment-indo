@@ -67,7 +67,7 @@ const allotmentHotels = [
 
 
     {
-        name: "Ulu Segara", closeSellData: false, validUntil: "2027-03-31",
+        name: "Ulu Segara", closeSellData: false, releaseDays: 7, validUntil: "2027-03-31",
         // Individual dates with no allotment, keyed "YYYY-MM" -> [day, ...]
         blockedDates: {
             "2026-10": [1, 2, 3, 4, 5, 6, 7, 13, 28, 29],
@@ -76,16 +76,16 @@ const allotmentHotels = [
             "2027-01": [2, 7, 8, 9]
         },
         // Room types shown for this hotel. The key is the "Room Type" value in
-        // this hotel's Supabase table; label is the name shown in the dashboard.
+        // this hotel's Supabase table; add a label only to show a different name.
         // Rows in the table that aren't listed here are not displayed.
         roomTypes: {
-            "One BR Villa": { label: "One BR Pool Villa", units: 2 }
+            "One BR Pool Villa": { units: 2 }
         }
     },
 
 
     {
-        name: "Indigo Bali Seminyak", closeSellData: false, validUntil: "2026-12-31", units: {
+        name: "Indigo Bali Seminyak", closeSellData: false, releaseDays: 10, validUntil: "2026-12-31", units: {
             "Standard Room": 2
         }
     },
