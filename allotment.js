@@ -253,20 +253,40 @@ async function loadHotelBookings() {
     }
 }
 
+// Supabase error codes meaning the hotel's table doesn't exist (Postgres / newer PostgREST)
+const MISSING_TABLE_CODES = ['42P01', 'PGRST205'];
+
+// Rows for a hotel that has no table in Supabase, built from the room types named
+// in the hotel list (roomTypes or units). Ids follow the list order, so a table
+// created later should use the same order to keep existing bookings in place.
+// Returns [] when the hotel list doesn't name any room types.
+function buildRowsFromHotelConfig(hotelObj) {
+    const rooms = hotelObj && (hotelObj.roomTypes || hotelObj.units);
+    if (!rooms) return [];
+    return Object.keys(rooms).map((roomType, i) => ({ id: i + 1, "Room Type": roomType }));
+}
+
 // --- Load hotel structure data and render table (replaces hotelSelector change event) ---
 async function loadHotelData(hotelName) {
     if (!hotelName) return;
-    const { data, error } = await supabase.from(hotelName).select('*').order('id');
-    if (error) {
-        showNotification('Failed to load hotel data', 'error');
-        return;
-    }
-    hotelData = data;
 
     // Determine total units and per-room units mapping
     let hotelObj = null;
     if (window.allotmentHotels) {
         hotelObj = window.allotmentHotels.find(h => h.name === hotelName);
+    }
+
+    const { data, error } = await supabase.from(hotelName).select('*').order('id');
+    if (error) {
+        const fallbackRows = MISSING_TABLE_CODES.includes(error.code) ? buildRowsFromHotelConfig(hotelObj) : [];
+        if (!fallbackRows.length) {
+            showNotification('Failed to load hotel data', 'error');
+            return;
+        }
+        console.warn(`No Supabase table for "${hotelName}" — using the room types from the hotel list.`);
+        hotelData = fallbackRows;
+    } else {
+        hotelData = data;
     }
 
     currentTotalUnit = hotelObj && hotelObj.totalUnit ? hotelObj.totalUnit : 1;
