@@ -79,14 +79,15 @@ const allotmentHotels = [
         // this hotel's Supabase table; add a label only to show a different name.
         // Rows in the table that aren't listed here are not displayed.
         roomTypes: {
-            "One BR Pool Villa": { units: 2 }
+            "One BR Villa": { units: 2 }
         }
     },
 
 
     {
-        name: "Indigo Bali Seminyak", closeSellData: false, releaseDays: 10, validUntil: "2026-12-31", units: {
-            "Standard Room": 2
+        name: "Indigo Bali Seminyak", closeSellData: false, releaseDays: 10, validUntil: "2026-12-31",
+        roomTypes: {
+            "Standard Room": { units: 2 }
         }
     },
 
