@@ -1,29 +1,18 @@
 
 // --- Hotel data (name + release days) ---
 // releaseDays represents how many days before arrival the allotment is released
+// unitReleaseDays (optional, instead of releaseDays) gives each unit its own release days, e.g. [7, 7, 14]
 // validUntil (optional, "YYYY-MM-DD") is the last day the allotment can be used; later dates are locked
 const allotmentHotels = [
     {
-        name: "Komaneka Keramas",
-        closeSellData: false,
-        seasonal: true,
-        seasonConfig: [
-            {
-                name: "High Season",
-                periods: [
-                    { startMonth: 7, startDay: 1, endMonth: 8, endDay: 31 },
-                    { startMonth: 12, startDay: 24, endMonth: 1, endDay: 6 }
-                ],
-                totalUnit: 4,
-                unitReleaseDays: [14, 14, 21, 21]
-            },
-            {
-                name: "Low Season",
-                isDefault: true,
-                totalUnit: 1,
-                unitReleaseDays: [14]
-            }
-        ]
+        name: "Komaneka Keramas", closeSellData: false, totalUnit: 3,
+        // Units 1–2 release 7 days before arrival, unit 3 releases 14 days before
+        unitReleaseDays: [7, 7, 14],
+        // Individual dates with no allotment, keyed "YYYY-MM" -> [day, ...]
+        blockedDates: {
+            "2026-10": [21, 22, 23],
+            "2026-11": [25]
+        }
     },
 
 

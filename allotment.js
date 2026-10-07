@@ -197,9 +197,11 @@ function buildHotelTitleHTML(hotelObj, hotelName) {
     if (hotelObj && hotelObj.seasonal) {
         html += ` <span class="release-days">(Seasonal)</span>`;
     } else {
-        const releaseDays = hotelObj && hotelObj.releaseDays ? hotelObj.releaseDays : 0;
-        if (releaseDays > 0) {
-            html += ` <span class="release-days">(${releaseDays.toString().padStart(2, '0')} Days Release)</span>`;
+        // Per-unit release days show each distinct value, e.g. "(07 / 14 Days Release)"
+        const releaseDays = (hotelObj && hotelObj.unitReleaseDays) || [hotelObj && hotelObj.releaseDays || 0];
+        const distinct = [...new Set(releaseDays)].filter(rd => rd > 0).sort((a, b) => a - b);
+        if (distinct.length) {
+            html += ` <span class="release-days">(${distinct.map(rd => String(rd).padStart(2, '0')).join(' / ')} Days Release)</span>`;
         }
     }
     const validUntil = getHotelValidUntil(hotelObj);
@@ -438,6 +440,8 @@ function renderMonthTable(month) {
     html += `</tr></thead><tbody>`;
 
     const isSeasonalHotel = !!(currentHotelObj && currentHotelObj.seasonal);
+    // Non-seasonal hotels may give each unit its own release days
+    const unitReleaseDays = !isSeasonalHotel && currentHotelObj && currentHotelObj.unitReleaseDays;
 
     // Dates with no usable allotment: past the hotel's validUntil, or individually blocked
     const validUntil = getHotelValidUntil(currentHotelObj);
@@ -516,7 +520,7 @@ function renderMonthTable(month) {
                 const isClosed = closedDays.includes(day);
 
                 // For seasonal hotels, check if this unit is active today and pick releaseDays
-                let effectiveReleaseDays = currentReleaseDays;
+                let effectiveReleaseDays = unitReleaseDays ? (unitReleaseDays[u - 1] || 0) : currentReleaseDays;
                 let isOutOfSeason = false;
 
                 if (isSeasonalHotel) {
@@ -696,6 +700,21 @@ function handleDragHover(cell) {
 }
 
 
+// One line per release-days value with how many units have it,
+// e.g. "2 Units · 07 Days Release" / "1 Unit · 14 Days Release"
+function buildUnitReleaseLinesHTML(total, releaseDaysPerUnit) {
+    const countByReleaseDays = new Map();
+    for (let i = 0; i < total; i++) {
+        const rd = releaseDaysPerUnit[i] || 0;
+        countByReleaseDays.set(rd, (countByReleaseDays.get(rd) || 0) + 1);
+    }
+    return [...countByReleaseDays].map(([rd, count]) => `
+            <div class="smd-unit-line">
+                <span class="smd-unit-label">${count} Unit${count !== 1 ? 's' : ''}</span>
+                <span class="smd-release">${String(rd).padStart(2, '0')} Days Release</span>
+            </div>`).join('');
+}
+
 // Builds the season detail HTML for a given month and returns it as a string.
 // Used both to populate the modal and to decide whether to show the button.
 function buildSeasonInfoHTML(month) {
@@ -703,6 +722,9 @@ function buildSeasonInfoHTML(month) {
 
     // ── Non-seasonal hotel ──────────────────────────────────────────────────
     if (!currentHotelObj.seasonal) {
+        if (currentHotelObj.unitReleaseDays) {
+            return buildUnitReleaseLinesHTML(currentTotalUnit, currentHotelObj.unitReleaseDays) + buildValidityRowHTML();
+        }
         const rows = [];
         if (currentRoomUnits && Object.keys(currentRoomUnits).length > 0) {
             Object.entries(currentRoomUnits).forEach(([rt, u]) => {
@@ -755,26 +777,8 @@ function buildSeasonInfoHTML(month) {
         let unitRows = '';
 
         if (season.totalUnit !== undefined) {
-            // Explicit unit count (Keramas-style) — group consecutive units by releaseDays
-            const total = season.totalUnit;
-            const rdArr = season.unitReleaseDays || [];
-            const groups = [];
-            let gi = 0;
-            while (gi < total) {
-                const rd = rdArr[gi] || 0;
-                let gj = gi + 1;
-                while (gj < total && (rdArr[gj] || 0) === rd) gj++;
-                const unitLabel = (gj - gi === 1) ? `Unit ${gi + 1}` : `Unit ${gi + 1}–${gj}`;
-                groups.push(`
-                    <div class="smd-unit-line">
-                        <span class="smd-unit-label">${unitLabel}</span>
-                        <span class="smd-release">${String(rd).padStart(2, '0')} Days Release</span>
-                    </div>`);
-                gi = gj;
-            }
-            unitRows = `
-                <div class="smd-unit-summary">${total} Unit${total !== 1 ? 's' : ''}</div>
-                ${groups.join('')}`;
+            // Explicit unit count — group consecutive units by releaseDays
+            unitRows = buildUnitReleaseLinesHTML(season.totalUnit, season.unitReleaseDays || []);
         } else {
             // Room-type style (Tanggayuda) — releaseDays per unit from seasonConfig
             const rd = season.unitReleaseDays ? (season.unitReleaseDays[0] || 0) : 0;
