@@ -3,11 +3,35 @@
 // releaseDays represents how many days before arrival the allotment is released
 // unitReleaseDays (optional, instead of releaseDays) gives each unit its own release days, e.g. [7, 7, 14]
 // validUntil (optional, "YYYY-MM-DD") is the last day the allotment can be used; later dates are locked
+
+// AYANA contract periods, the same for all three AYANA hotels. Dates in neither
+// list (e.g. 29 Dec 2026 – 2 Jan 2027) have no allotment and are locked.
+const ayanaRegularSeasonPeriods = [
+    { from: "2026-09-28", to: "2026-09-30" },
+    { from: "2026-10-08", to: "2026-12-23" },
+    { from: "2027-01-06", to: "2027-02-04" },
+    { from: "2027-02-12", to: "2027-03-07" },
+    { from: "2027-03-15", to: "2027-04-28" },
+    { from: "2027-05-06", to: "2027-06-14" },
+    { from: "2027-09-01", to: "2027-09-13" }
+];
+const ayanaHighSeasonPeriods = [
+    { from: "2026-09-24", to: "2026-09-27" },
+    { from: "2026-10-01", to: "2026-10-07" },
+    { from: "2026-12-24", to: "2026-12-28" },
+    { from: "2027-01-03", to: "2027-01-05" },
+    { from: "2027-02-05", to: "2027-02-11" },
+    { from: "2027-03-08", to: "2027-03-14" },
+    { from: "2027-04-29", to: "2027-05-05" },
+    { from: "2027-06-15", to: "2027-08-31" },
+    { from: "2027-09-14", to: "2027-09-19" }
+];
+
 const allotmentHotels = [
     {
         name: "Komaneka Keramas", closeSellData: false, totalUnit: 3,
-        // Units 1–2 release 7 days before arrival, unit 3 releases 14 days before
-        unitReleaseDays: [7, 7, 14],
+        // Units 1–2 release 21 days before arrival, unit 3 releases 14 days before
+        unitReleaseDays: [21, 21, 14],
         // Individual dates with no allotment, keyed "YYYY-MM" -> [day, ...]
         blockedDates: {
             "2026-10": [21, 22, 23],
@@ -78,6 +102,42 @@ const allotmentHotels = [
         roomTypes: {
             "Standard Room": { units: 2 }
         }
+    },
+
+
+    {
+        name: "Ayana Resort Bali", closeSellData: true, seasonal: true, validUntil: "2027-09-19",
+        roomTypes: {
+            "Ocean View Room": { units: 2 }
+        },
+        seasonConfig: [
+            { name: "Regular Season", isLowSeason: true, periods: ayanaRegularSeasonPeriods, releaseDays: 14 },
+            { name: "High Season", periods: ayanaHighSeasonPeriods, releaseDays: 21 }
+        ]
+    },
+
+
+    {
+        name: "Ayana Segara Bali", closeSellData: true, seasonal: true, validUntil: "2027-09-19",
+        roomTypes: {
+            "Ocean View Room": { units: 2 }
+        },
+        seasonConfig: [
+            { name: "Regular Season", isLowSeason: true, periods: ayanaRegularSeasonPeriods, releaseDays: 14 },
+            { name: "High Season", periods: ayanaHighSeasonPeriods, releaseDays: 21 }
+        ]
+    },
+
+
+    {
+        name: "Ayana Villas Bali", closeSellData: true, seasonal: true, validUntil: "2027-09-19",
+        roomTypes: {
+            "One BR Ocean View Villa": { units: 1 }
+        },
+        seasonConfig: [
+            { name: "Regular Season", isLowSeason: true, periods: ayanaRegularSeasonPeriods, releaseDays: 21 },
+            { name: "High Season", periods: ayanaHighSeasonPeriods, releaseDays: 30 }
+        ]
     },
 
 ];

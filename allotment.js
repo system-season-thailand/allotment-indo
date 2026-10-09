@@ -443,17 +443,19 @@ function renderMonthTable(month) {
     // Non-seasonal hotels may give each unit its own release days
     const unitReleaseDays = !isSeasonalHotel && currentHotelObj && currentHotelObj.unitReleaseDays;
 
-    // Dates with no usable allotment: past the hotel's validUntil, or individually blocked
+    // Dates with no usable allotment: past the hotel's validUntil, individually blocked,
+    // or (for a seasonal hotel without a default season) outside all of its seasons
     const validUntil = getHotelValidUntil(currentHotelObj);
     const monthIdx = months.indexOf(month);
     const blockedDays = getBlockedDaysForMonth(currentHotelObj, selectedYear, monthIdx);
     const isExpiredDay = day => !!validUntil && new Date(selectedYear, monthIdx, day) > validUntil;
-    const isBlockedDay = day => blockedDays.has(day);
+    const isBlockedDay = day => blockedDays.has(day)
+        || (isSeasonalHotel && !getSeasonConfigForDay(currentHotelObj, selectedYear, monthIdx + 1, day));
     const isLockedDay = day => isExpiredDay(day) || isBlockedDay(day);
     const expiredTitle = validUntil ? `Allotment valid until ${formatShortDate(validUntil)}` : '';
-    // A blocked date inside the validity window is still shown as "not valid"
-    const lockedClass = day => isBlockedDay(day) ? 'blocked' : 'expired';
-    const lockedTitle = day => isBlockedDay(day) ? 'Allotment not valid on this date' : expiredTitle;
+    // Past validUntil reads "valid until"; other locked dates read "not valid"
+    const lockedClass = day => isExpiredDay(day) ? 'expired' : 'blocked';
+    const lockedTitle = day => isExpiredDay(day) ? expiredTitle : 'Allotment not valid on this date';
     const hasLockedDays = days.some(isLockedDay);
 
     // --- NEW LOGIC: Render single Total Unit row at top if totalUnit:1 and no custom units ---
@@ -485,7 +487,7 @@ function renderMonthTable(month) {
                     html += `<th class="expired-unit">0</th>`;
                 } else if (isSeasonalHotel) {
                     const monthNum = months.indexOf(month) + 1;
-                    const season = getSeasonConfigForDay(currentHotelObj, monthNum, day);
+                    const season = getSeasonConfigForDay(currentHotelObj, selectedYear, monthNum, day);
                     const units = (season && season.totalUnit !== undefined)
                         ? season.totalUnit
                         : (currentRoomUnits[roomType] || currentTotalUnit || 1);
@@ -525,7 +527,7 @@ function renderMonthTable(month) {
 
                 if (isSeasonalHotel) {
                     const monthNum = months.indexOf(month) + 1;
-                    const season = getSeasonConfigForDay(currentHotelObj, monthNum, day);
+                    const season = getSeasonConfigForDay(currentHotelObj, selectedYear, monthNum, day);
                     if (season) {
                         const seasonTotalUnit = season.totalUnit !== undefined
                             ? season.totalUnit
@@ -533,9 +535,7 @@ function renderMonthTable(month) {
                         if (u > seasonTotalUnit) {
                             isOutOfSeason = true;
                         } else {
-                            effectiveReleaseDays = season.unitReleaseDays
-                                ? (season.unitReleaseDays[u - 1] || 0)
-                                : 0;
+                            effectiveReleaseDays = getSeasonReleaseDays(season, u);
                         }
                     }
                 }
@@ -755,7 +755,7 @@ function buildSeasonInfoHTML(month) {
     let curSeason  = null;
     let rangeStart = 1;
     for (let d = 1; d <= daysCount; d++) {
-        const s = getSeasonConfigForDay(currentHotelObj, monthNum, d);
+        const s = getSeasonConfigForDay(currentHotelObj, selectedYear, monthNum, d);
         if (s !== curSeason) {
             if (curSeason !== null) ranges.push({ season: curSeason, startDay: rangeStart, endDay: d - 1 });
             curSeason  = s;
@@ -772,7 +772,7 @@ function buildSeasonInfoHTML(month) {
         const dateTag = isMixed
             ? `<span class="smd-date-range">${monthAbbr} ${startDay}–${endDay}</span>`
             : '';
-        const seasonTag = `<span class="smd-season-name ${season.isDefault ? 'low' : 'high'}">${season.name}</span>`;
+        const seasonTag = `<span class="smd-season-name ${season.isDefault || season.isLowSeason ? 'low' : 'high'}">${season.name}</span>`;
 
         let unitRows = '';
 
@@ -781,10 +781,10 @@ function buildSeasonInfoHTML(month) {
             unitRows = buildUnitReleaseLinesHTML(season.totalUnit, season.unitReleaseDays || []);
         } else {
             // Room-type style (Tanggayuda) — releaseDays per unit from seasonConfig
-            const rd = season.unitReleaseDays ? (season.unitReleaseDays[0] || 0) : 0;
+            const rd = getSeasonReleaseDays(season, 1);
             if (hotelData && hotelData.length > 0) {
-                unitRows = hotelData.map(row => {
-                    const rt = row['Room Type'];
+                unitRows = hotelData.filter(row => isRoomTypeVisible(currentHotelObj, row['Room Type'])).map(row => {
+                    const rt = getRoomTypeLabel(currentHotelObj, row['Room Type']);
                     const u  = currentRoomUnits[rt] || currentTotalUnit || 1;
                     return `
                         <div class="smd-unit-line">
@@ -848,8 +848,14 @@ function handleSeasonModalBackdrop(e) {
     if (e.target === document.getElementById('seasonModal')) closeSeasonModal();
 }
 
-// Returns true if (monthNum, day) falls within the given season period (handles year-wrap)
-function isDateInSeasonPeriod(monthNum, day, period) {
+// Returns true if the date falls within the given season period. A period is either
+// a fixed date range ({ from: "YYYY-MM-DD", to: "YYYY-MM-DD" }) or a range repeated
+// every year (startMonth/startDay – endMonth/endDay, may wrap the year end)
+function isDateInSeasonPeriod(year, monthNum, day, period) {
+    if (period.from) {
+        const date = `${year}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return date >= period.from && date <= period.to;
+    }
     const { startMonth, startDay, endMonth, endDay } = period;
     if (startMonth > endMonth) {
         // Wraps around year end (e.g. Dec 24 – Jan 6)
@@ -860,16 +866,24 @@ function isDateInSeasonPeriod(monthNum, day, period) {
            (monthNum < endMonth || (monthNum === endMonth && day <= endDay));
 }
 
-// Returns the matching seasonConfig entry for a given (monthNum, day), or the default entry
-function getSeasonConfigForDay(hotelObj, monthNum, day) {
+// Returns the matching seasonConfig entry for a given date, or the default entry
+// (null when no season matches and the hotel has no default season)
+function getSeasonConfigForDay(hotelObj, year, monthNum, day) {
     if (!hotelObj || !hotelObj.seasonal || !hotelObj.seasonConfig) return null;
     for (const season of hotelObj.seasonConfig) {
         if (season.isDefault) continue;
-        if (season.periods && season.periods.some(p => isDateInSeasonPeriod(monthNum, day, p))) {
+        if (season.periods && season.periods.some(p => isDateInSeasonPeriod(year, monthNum, day, p))) {
             return season;
         }
     }
     return hotelObj.seasonConfig.find(s => s.isDefault) || null;
+}
+
+// Release days for unit u (1-based) in a season: its own entry in unitReleaseDays,
+// or the season's releaseDays when it applies one value to every unit
+function getSeasonReleaseDays(season, u) {
+    if (season.unitReleaseDays) return season.unitReleaseDays[u - 1] || 0;
+    return season.releaseDays || 0;
 }
 
 // Returns the maximum unit count across all seasons that appear in a given month (for row sizing)
@@ -881,7 +895,7 @@ function getMaxUnitsForMonth(hotelObj, monthName, roomType) {
     const daysCount = daysInMonth[monthName];
     let maxUnits = 0;
     for (let d = 1; d <= daysCount; d++) {
-        const season = getSeasonConfigForDay(hotelObj, monthNum, d);
+        const season = getSeasonConfigForDay(hotelObj, selectedYear, monthNum, d);
         const units = (season && season.totalUnit !== undefined)
             ? season.totalUnit
             : (currentRoomUnits[roomType] || currentTotalUnit || 1);
